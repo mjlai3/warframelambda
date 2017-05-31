@@ -1,74 +1,27 @@
 exports.myHandler = function(event, context, callback) {
+	var request = require('request');
 	var _ = require('lodash');
-	var http = require('http');
 
-	getOrders('Mod', 'Primed Chamber', function(err, result){
-		if(err){
-			return console.log('Error while trying to get order details: ', err)
-		}
-		console.log(result);
+	request('http://warframe.market/api/get_all_items_v2', function(error, response, items){
+		items = JSON.parse(items);
+		_.forEach(items, function(value, key) {
+			request('http://warframe.market/api/get_orders/' + encodeURIComponent(value.item_type) + '/' + encodeURIComponent(value.item_name), function(error, response, order){
+				try{
+					order = JSON.parse(order);
+					request({
+						method: "POST",
+						uri: 'https://wf-market-aggregator.firebaseio.com/test.json',
+						json: order
+					});
+				}
+				catch(e) {
+					console.log(e);
+				}
+			});
+		});
 	});
 
-	getItemList(function(err, result){
-		if(err){
-			return console.log('Error while trying to get price: ', err)
-		}
-		_.forEach(result, function(value, key) {
-			console.log(value.item_type);
-			console.log(value.item_name);
-		})
-	});
-
-	function getOrders(item_type, item_name, cb){
-		var options = {
-			host: 'warframe.market',
-			port: 80,
-			path: '/api/get_orders/' + encodeURIComponent(item_type) + '/' + encodeURIComponent(item_name),
-			method: 'GET'
-		}
-		http.request(options, function(res){
-			var body = '';
-
-			res.on('data', function(chunk){
-				body+= chunk;
-			});
-
-			res.on('end', function(){
-				var result = JSON.parse(body);
-				cb(null, result);
-			});
-
-			res.on('error', cb);
-		})
-		.on('error', cb)
-		.end();
-	}
-
-	function getItemList(cb){
-		var options = {
-			host: 'warframe.market',
-			port: 80,
-			path: '/api/get_all_items_v2',
-			method: 'GET'
-		}
-		http.request(options, function(res){
-			var body = '';
-
-			res.on('data', function(chunk){
-				body+= chunk;
-			});
-
-			res.on('end', function(){
-				var result = JSON.parse(body);
-				cb(null, result);
-			});
-
-			res.on('error', cb);
-		})
-		.on('error', cb)
-		.end();
-	}
-	// callback(null, 'success');
+	callback(null, 'success');
 }
 
-exports.myHandler();
+// exports.myHandler();
